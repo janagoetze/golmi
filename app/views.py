@@ -20,6 +20,11 @@ def demo():
     return render_template("demo.html")
 
 
+@app.route("/guess_the_word", methods=["GET"])
+def guess_the_word():
+    return render_template("guess_the_word.html")
+
+
 @app.route("/save_log", methods=["POST"])
 def save_log():
     if not request.data or not request.is_json:

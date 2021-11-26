@@ -34,7 +34,10 @@ socketio = SocketIO(
 
 # --- create a data model --- #
 
+# FIXME: can only use same config even for different endpoints right now
 DEFAULT_CONFIG_FILE = "app/static/resources/config/pentomino_types.json"
+DEFAULT_CONFIG_FILE = "app/static/resources/config/letters.json"
+
 # session ids mapped to Model instances
 client_models = dict()
 
@@ -137,6 +140,34 @@ def init_from_Random(params):
             area_target,
             random_grip
         )
+
+
+@socketio.on("word_init")
+def init_from_word(params):
+    model = client_models[request.sid]
+    good_params = check_parameters(
+        params,
+        model,
+        {"objs", "n_grip", "area_block", "area_target"}
+    )
+
+    if good_params:
+        # obtain random parameters from view
+        objects = params["objs"]
+        n_grip = params["n_grip"]
+        random_grip = params["random_grip"]
+        area_block = params["area_block"]
+        area_target = params["area_target"]
+
+        # generate a random state and load it
+        model.generator.load_word_state(
+            objects,
+            n_grip,
+            area_block,
+            area_target,
+            random_grip
+        )
+
 
 # --- gripper --- #
 @socketio.on("add_gripper")
