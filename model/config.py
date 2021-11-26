@@ -3,16 +3,11 @@ Class to store settings such as board width, allowable actions, etc.
 """
 
 import json
+import random
 
 
 class Config:
-    def __init__(
-            self, type_config, width=20, height=20,
-            snap_to_grid=False, prevent_overlap=True,
-            actions=["move", "rotate", "flip", "grip"],
-            move_step=0.5, rotation_step=90,
-            action_interval=0.1, verbose=False,
-            block_on_target=True):
+    def __init__(self, config):
         """
         Constructor.
         @param type_config	    json file or object mapping types
@@ -34,40 +29,47 @@ class Config:
         @param action_interval	frequency of repeating looped actions in seconds
                                 default: 0.5
         """
+
+        with open(config, "r", encoding="utf-8") as infile:
+            configs = json.load(infile)
+
+        self.width = configs.get('width', 20)
+        self.height = configs.get('height', 20)
+        self.snap_to_grid = configs.get('snap_to_grid', False)
+        self.prevent_overlap = configs.get('prevent_overlap', True)
+        self.actions = configs.get('actions', ["move", "rotate", "flip", "grip"])
+        self.move_step = configs.get('move_step', 0.5)
+        self.rotation_step = configs.get('rotation_step', 90)
+        self.action_interval = configs.get('action_interval', 0.1)
+        self.verbose = configs.get('verbose', False)
+        self.block_on_target = configs.get('block_on_target', True)
+        self.type_config = configs.get('pieces', None)
+
         # make sure step size is allowed
-        if (not (1/(move_step % 1)).is_integer() and
-                not isinstance(move_step, int)):
+        if not ( isinstance(self.move_step, int)
+          or (1/(self.move_step % 1)).is_integer()
+          ):
             raise ValueError(
-                f"Selected step size of {move_step} is not allowed\n"
+                f"Selected step size of {self.move_step} is not allowed\n"
                 "Please select a step size that satisfies the following "
                 "condition: (1/(step size % 1)) must be an integer"
             )
-        self.width = width
-        self.height = height
-        self.snap_to_grid = snap_to_grid
-        self.prevent_overlap = prevent_overlap
-        self.actions = actions
-        self.move_step = move_step
-        self.rotation_step = rotation_step
-        self.action_interval = action_interval
-        self.verbose = verbose
-        self.block_on_target = block_on_target
 
-        if type(type_config) == str:
-            self.type_config = self._types_from_JSON(type_config)
-        else:
-            self.type_config = type_config
+        if not self.type_config:
+            raise ValueError("No pieces specified.")
 
-        self.colors = [
-            "red",
-            "orange",
-            "yellow",
-            "green",
-            "blue",
-            "purple",
-            "saddlebrown",
-            "grey"
-        ]
+        self.colors = configs.get('colors',
+                                  ["red",
+                                   "orange",
+                                   "yellow",
+                                   "green",
+                                   "blue",
+                                   "purple",
+                                   "saddlebrown",
+                                   "grey"
+                                   ])
+        if isinstance(self.colors[0], list):
+            self.colors = random.choice(self.colors)
 
     def __repr__(self):
         properties = ", ".join(vars(self).keys())
@@ -75,24 +77,6 @@ class Config:
 
     def get_types(self):
         return self.type_config.keys()
-
-    def _types_from_JSON(self, filename):
-        """
-        Parses a JSON file containing type matrices.
-        The file should map each supported object type
-        to a grid filled with 0s and 1s,
-        where a 1 signifies the presence of a block and
-        a 0 signifies the absence.
-        @param filename 	path to json file
-        """
-        with open(filename, "r", encoding="utf-8") as infile:
-            types = json.load(infile)
-
-        # Ignore keys with underscores (used for comments)
-        return {
-            key: value for key, value in types.items()
-            if not key.startswith("_")
-        }
 
     def to_dict(self):
         """
