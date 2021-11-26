@@ -151,7 +151,17 @@ class Generator:
 
         return target_obj
 
-    def _generate_objects(self, n_objs, area_block, area_target, target=True):
+    def _generate_objects(self, pieces, area_block, area_target, target=True):
+        # FIXME: find a smarter way to distinguish these cases
+        # we pass as pieces either "the number of objects to generate"
+        # or "the exact objects we want to generate"
+
+        n_obj = 0
+        if isinstance(pieces, int):
+            n_obj = pieces
+        else:
+            n_obj = len(pieces)
+
         objects = dict()
         targets = dict()
         attempt = 0
@@ -160,11 +170,17 @@ class Generator:
             area_block
         )
 
-        while len(objects) < n_objs:
-            # pick a random type and its height and width
-            piece_type = random.choice(
-                list(self.model.config.type_config.keys())
-            )
+        for i in range(n_obj):
+            try:
+                piece_type = pieces[i]
+            except TypeError:
+                # pick a random type and its height and width
+                piece_type = random.choice(
+                    list(self.model.config.type_config.keys())
+                )
+
+            print(f'Trying to place piece {i}: {piece_type}')
+
             block_matrix = self.model.config.type_config[piece_type]
             height = len(block_matrix)
             width = len(block_matrix[0])
@@ -210,6 +226,7 @@ class Generator:
 
             # if object does not overlap, add it
             if self.model.object_grid.is_legal_position(obj.occupied(), None):
+                print('Placing object')
                 index = str(len(objects))
                 obj.id_n = index
                 self.model.object_grid.add_obj(obj)
@@ -235,6 +252,7 @@ class Generator:
                 if self.model.config.prevent_overlap:
                     attempt += 1
                     if attempt > self.attempts:
+                        print(f'Stopping after {attempt} attempts.')
                         break
 
         return objects, targets
@@ -248,6 +266,26 @@ class Generator:
         # get objects
         objects, targets = self._generate_objects(
             n_objs, area_block, area_target
+        )
+
+        # create state
+        state = State()
+        state.grippers = grippers
+        state.objs = objects
+        state.targets = targets
+
+        # load state
+        self.model.set_state(state)
+
+    def load_word_state(
+            self, objs, n_grippers, area_block,
+            area_target, random_gr_position=False):
+        # get grippers
+        grippers = self._generate_grippers(n_grippers, random_gr_position)
+
+        # get objects
+        objects, targets = self._generate_objects(
+            objs, area_block, area_target, target=False
         )
 
         # create state
